@@ -1,0 +1,5 @@
+To do
+
+* Complete macd signal
+* Mom signal
+* Construct a volatility model

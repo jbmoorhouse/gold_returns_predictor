@@ -20,19 +20,22 @@ class StochRsiSignal(BaseEstimator, TransformerMixin):
         return self
     
     def transform(self, X, y = None):
-        stoch_rsi = X.loc[:, "stochrsi_fastd"]
+        stochrsi_fastd = X.loc[:, "stochrsi_fastd"]
         
-        stoch_buy = (
-            (stoch_rsi > self.lower) & 
-            (stoch_rsi.shift(1) < self.lower)).astype(int)
-        stoch_sell = (
-            (stoch_rsi < self.upper) & 
-            (stoch_rsi.shift(1) > self.upper)).astype(int)
+        stochrsi_fastd_buy = (
+            (stochrsi_fastd >= self.lower) & 
+            (stochrsi_fastd.shift(1) <= self.lower)
+        ).astype(int)
+        
+        stochrsi_fastd_sell = (
+            (stochrsi_fastd <= self.upper) & 
+            (stochrsi_fastd.shift(1) >= self.upper)
+        ).astype(int)
             
         if self.as_dataframe:    
-            X['stoch_fastd_buy'] = stoch_buy
-            X['stoch_fastd_sell'] = stoch_sell
+            X['stoch_fastd_buy'] = stochrsi_fastd_buy
+            X['stoch_fastd_sell'] = stochrsi_fastd_sell
             
             return X
         else:
-            return np.c_[X, stoch_buy, stoch_sell]
+            return np.c_[X, stochrsi_fastd_buy, stochrsi_fastd_sell]
