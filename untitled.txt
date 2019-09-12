@@ -1,5 +1,4 @@
 To do
 
-* Complete macd signal
 * Mom signal
-* Construct a volatility model
+* Experiment with volatility crossover

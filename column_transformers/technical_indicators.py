@@ -7,10 +7,9 @@ class StochRsiSignal(BaseEstimator, TransformerMixin):
     # ----------------------------------------------------------------------
     # Constructors
     
-    def __init__(self, upper = 80, lower = 20, as_dataframe = True):
+    def __init__(self, upper = 80, lower = 20):
         self.upper = upper
         self.lower = lower
-        self.as_dataframe = as_dataframe
         
         
     # ----------------------------------------------------------------------
@@ -31,15 +30,11 @@ class StochRsiSignal(BaseEstimator, TransformerMixin):
             (stochrsi_fastd <= self.upper) & 
             (stochrsi_fastd.shift(1) >= self.upper)
         ).astype(int)
-            
-        if self.as_dataframe:    
-            X['stoch_fastd_buy'] = stochrsi_fastd_buy
-            X['stoch_fastd_sell'] = stochrsi_fastd_sell
-            
-            return X
-        else:
-            return np.c_[X, stochrsi_fastd_buy, stochrsi_fastd_sell]
         
+        X['stoch_fastd_buy'] = stochrsi_fastd_buy
+        X['stoch_fastd_sell'] = stochrsi_fastd_sell
+            
+        return X
         
         
 class MacdSignal(BaseEstimator, TransformerMixin):
@@ -59,7 +54,6 @@ class MacdSignal(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         return self
     
-    
     def transform(self, X, y=None):
         macd_fast = X['macd']
         macd_slow = X['macd_macdsignal']
@@ -77,3 +71,20 @@ class MacdSignal(BaseEstimator, TransformerMixin):
         else:
             return np.c_[X, uptrend * macd_fast, uptrend]
         
+        
+class VolatilityDiff(BaseEstimator, TransformerMixin):
+    
+    # ----------------------------------------------------------------------
+    # fit, transform methods
+    
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X, y=None):
+        vol_columns = X.filter(like='vol').columns
+        
+        for col in vol_columns:
+            name = "{}_diff".format(col)
+            X[name] = X[col].diff()
+        
+        return X.dropna()

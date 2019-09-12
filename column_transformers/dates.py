@@ -19,5 +19,6 @@ class DateDummy(TransformerMixin):
     
     def transform(self, X, y=None):
         dummy_df = list(self._get_dummy_variables(X))
+        X = pd.concat([X, *dummy_df], axis = 1)
         
-        return pd.concat([X, *dummy_df], axis = 1)
+        return X
