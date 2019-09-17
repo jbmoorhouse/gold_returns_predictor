@@ -45,7 +45,7 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
     # Rendering Methods
         
     def __repr__(self):
-        return "TBC"
+        return "TBD"
     
     
     # ----------------------------------------------------------------------
@@ -72,8 +72,8 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
           
         """
         
-        if not isinstance(col_name, str):
-            raise TypeError("'col_name' must be of type str")
+        if not isinstance(column_name, str):
+            raise TypeError("'column_name' must be of type str")
 
         if not isinstance(X, (pd.DataFrame, pd.Series)):
             raise TypeError("'X' must be of type pd.DataFrame or pd.Series")            
@@ -119,11 +119,9 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
     # ======================================================================
     
     
-    # ----------------------------------------------------------------------
-    # fit/transform methods
-    
     def fit(self, X, y=None):
         return self
+        
         
     def transform(self, X, y=None):
         """
