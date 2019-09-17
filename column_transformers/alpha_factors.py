@@ -79,7 +79,7 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
             raise TypeError("'X' must be of type pd.DataFrame or pd.Series")            
         elif isinstance(X, pd.DataFrame):
             
-            # calculate MACD oscillator statistics
+            # calculate macd time series
             price_series = X[column_name]
             macd, macd_signal, macd_hist = talib.MACD(price_series.values)
 
@@ -171,12 +171,15 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
         1979-08-06	  283	1.70	    4.779	 -3.075	              0.013264
         
         """
+        
         # get MACD oscillator statistics
         X_macd = self._macd(X)
         
         # generate strategy long/short signal and asset returns
         long_signal = self._long_signal(X_macd)
         short_signal = self._short_signal(X_macd)
+        
+        # calculate the assets simple returns 
         asset_returns = X_macd['price'].pct_change()
         
         # add strategy return column
