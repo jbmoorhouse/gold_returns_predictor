@@ -4,6 +4,7 @@ import numpy as np
 import talib
 
 
+
 class MacdStrategy(BaseEstimator, TransformerMixin):
     """
     Stores the parameters to constrain a moving average convergence/
@@ -17,11 +18,11 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
     
     Parameters
     ----------
-    fast_period : int, default 12
+    fast_period : float, default 12.
         Time constant for the 'fast' price series exponential moving average
-    slow_period : int, default 26
+    slow_period : float, default 26.
         Time constant for the 'slow' price series exponential moving average 
-    signal_period : int, default 9
+    signal_period : float, default 9.
         Time constant for the macd series exponential moving average  
         
     Examples
@@ -36,7 +37,7 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
     # Constructors
     # ======================================================================
 
-    def __init__(self, fast_period=12, slow_period=26, signal_period=9):
+    def __init__(self, fast_period=12.0, slow_period=26.0, signal_period=9.0):
         
         # set default model parameters if user wishes to use self.transform
         # with experimental parameters
@@ -45,12 +46,12 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
         self.signal_period = signal_period
         
         # set reasonable test time constants
-        self.fast_period_test = np.arange(1,20)
-        self.slow_period_test = np.arange(2, 30)
-        self.fast_period_test = np.arange(2, 15)
+        self.fast_period_test = np.arange(2,20, dtype = float)
+        self.slow_period_test = np.arange(3, 30, dtype = float)
+        self.signal_period_test = np.arange(4, 15, dtype = float)
         
         # cost
-        self.ratio = ratio
+        self.ratio = 0
         
         
     # ======================================================================
@@ -69,7 +70,7 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
     def _macd(self, 
               fast_period = None, 
               slow_period = None, 
-              signal_period = None
+              signal_period = None,
               X = None, 
               column_name='price', 
               ):
@@ -112,11 +113,12 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
             
             # calculate macd time series
             price_series = X[column_name]
+            
             macd, macd_signal, macd_hist = talib.MACD(
                 price_series.values,
-                fastperiod = self.fast_period,
-                slowperiod = self.slow_period
-                signalperiod = self.signal_period
+                fastperiod = fast_period,
+                slowperiod = slow_period,
+                signalperiod = signal_period
             )
 
             return X.assign(
@@ -125,12 +127,13 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
                 macdhist = macd_hist
             )
         elif isinstance(X, pd.Series):
+        
             # calculate the macd time series
             macd, macd_signal, macd_hist = talib.MACD(
                 X.values,
-                fastperiod = self.fast_period,
-                slowperiod = self.slow_period
-                signalperiod = self.signal_period
+                fastperiod = fast_period,
+                slowperiod = slow_period,
+                signalperiod = signal_period
             )
             
             return pd.DataFrame(
@@ -155,10 +158,7 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
         return (self.short) * -1
     
     
-    def _strategy_returns(self, X):
-        
-        # get MACD oscillator statistics
-        X_macd = self._macd(X = X)
+    def _strategy_returns(self, X_macd):
         
         # generate strategy long/short signal and asset returns
         long_signal = self._long_signal(X_macd)
@@ -186,28 +186,33 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
     
     def _fit(self, X, y, annualisation_factor, risk_free_rate):
         
-        for f in self.fast_period_test:
+        for f in tqdm(self.fast_period_test):
             for s in self.slow_period_test:
-                for p in self.signal_period:
+                for p in self.signal_period_test:
                     
-                    strategy_returns = self._strategy_returns(X)
-                    ratio = _cost_function(
+                    X_macd = self._macd(f, s, p, X)
+                    strategy_returns = self._strategy_returns(X_macd)
+                    ratio = self._cost_function(
                         strategy_returns,
-                        annualisation_factor
+                        annualisation_factor,
+                        risk_free_rate
                     )
-                    
+                                    
                     if ratio > self.ratio:
+                        
+                        self.ratio = ratio
+                        
                         self.fast_period = f
                         self.slow_period = s
                         self.signal_period = p
+                        
         
     # ======================================================================
     # Public methods
     # ======================================================================
     
     
-    def fit(self, X, y=None, annualisation_factor=252, risk_free_rate=0.01):
-        
+    def fit(self, X, y=None, annualisation_factor=252, risk_free_rate=0.00):
         self._fit(X, y, annualisation_factor, risk_free_rate)
         
         return self 
@@ -250,19 +255,22 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
         >>> strategy = MacdStrategy()
         >>> strategy.transform(X)
         
-                    price  macd  macd_signal  macd_hist  macd_strategy_returns
+                    price  macd  macd_signal     ...  macd_strategy_returns
         Date					
-        1979-06-15	  280   NaN	         NaN	    NaN	                   NaN
-        ...           ...   ...          ...        ...                    ...
-        1979-08-02	  291	4.07	     6.20	 -2.128	             -0.004826
-        1979-08-03	  287	2.93         5.55	   -2.6	              0.017153
-        1979-08-06	  283	1.70	    4.779	 -3.075	              0.013264
+        1979-06-15	  280   NaN	         NaN	 ...	                NaN
+        ...           ...   ...          ...     ...                    ...
+        1979-08-02	  291	4.07	     6.20	 ...	          -0.004826
+        1979-08-03	  287	2.93         5.55	 ...	           0.017153
+        1979-08-06	  283	1.70	    4.779	 ...	           0.013264
         
         """
         
+        # get MACD oscillator statistics
+        X_macd = self._macd(X = X)
+        
         # add strategy return column
-        X.loc[:, 'macd_strategy_returns'] = (
-            self._strategy_returns(X)
+        X_macd['macd_strategy_returns'] = (
+            self._strategy_returns(X_macd)
         )
         
-        return X
+        return X_macd
