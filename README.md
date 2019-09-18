@@ -2,7 +2,7 @@
 
 ## What is it?
 
-The notebook and code contained withing this repository aim to predic the forward returns of the asset "Gold" as measured against a variety of currencies and timeframes. The user is responsible for sourcing the relevant pricing data. Details for which may be found in the accompanying notebook `analysis.ipynb`. Please see the [disclaimer](#discalimer) below to review the manner in which any information from this repository should be used.
+The notebook and code contained withing this repository aim to predic the forward returns of the asset "Gold" as measured against a variety of currencies and timeframes. The user is responsible for sourcing the relevant pricing data. Details for which may be found in the accompanying notebook `analysis.ipynb`. Please see the [disclaimer](#Disclaimer) below to review the manner in which any information from this repository should be used.
 
 ## License
 
