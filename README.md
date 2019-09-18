@@ -4,6 +4,10 @@
 
 This is a model for 
 
+## License
+
+
+
 ## Disclaimer 
 
 The material is for informational purposes only, you should not construe any such information or other material as legal, tax, investment, financial, or other advice. Nothing contained in this repository constitutes a solicitation, recommendation, endorsement, or offer by the Author or any third party service provider to buy or sell any securities or other financial instruments in this or in in any other jurisdiction in which such solicitation or offer would be unlawful under the securities laws of such jurisdiction.
