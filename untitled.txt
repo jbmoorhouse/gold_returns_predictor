@@ -1,4 +1,0 @@
-To do
-
-* Mom signal
-* Experiment with volatility crossover
