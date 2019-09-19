@@ -4,6 +4,12 @@
 
 The notebook and code contained within this repository aims to predict the forward returns of the asset "Gold" as measured against a variety of currencies and timeframes. The user is responsible for sourcing the relevant pricing data. Details for which may be found in the accompanying notebook `analysis.ipynb`. Please see the [disclaimer](#Disclaimer) below to review the manner in which any information from this repository should be used.
 
+## Dependancies
+
+* conda 4.7.11
+* talib 0.4.17
+* Valid Quandl account authentication key
+
 ## License
 
 BSD 3
