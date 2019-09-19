@@ -2,6 +2,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 import pandas as pd
 import numpy as np
 import talib
+from tqdm import tqdm
 
 
 
@@ -37,7 +38,11 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
     # Constructors
     # ======================================================================
 
-    def __init__(self, fast_period=12.0, slow_period=26.0, signal_period=9.0):
+    def __init__(self, 
+                 result = 'optimal'
+                 fast_period=12.0, 
+                 slow_period=26.0, 
+                 signal_period=9.0):
         
         # set default model parameters if user wishes to use self.transform
         # with experimental parameters
@@ -199,9 +204,7 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
                     )
                                     
                     if ratio > self.ratio:
-                        
                         self.ratio = ratio
-                        
                         self.fast_period = f
                         self.slow_period = s
                         self.signal_period = p
@@ -214,7 +217,6 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
     
     def fit(self, X, y=None, annualisation_factor=252, risk_free_rate=0.00):
         self._fit(X, y, annualisation_factor, risk_free_rate)
-        
         return self 
         
         
@@ -265,10 +267,8 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
         
         """
         
-        # get MACD oscillator statistics
         X_macd = self._macd(X = X)
         
-        # add strategy return column
         X_macd['macd_strategy_returns'] = (
             self._strategy_returns(X_macd)
         )
