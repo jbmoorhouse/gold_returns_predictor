@@ -39,7 +39,7 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
     # ======================================================================
 
     def __init__(self, 
-                 result = 'optimal'
+                 result = 'optimal',
                  fast_period=12.0, 
                  slow_period=26.0, 
                  signal_period=9.0):
