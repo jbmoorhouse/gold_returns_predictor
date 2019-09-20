@@ -51,7 +51,6 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
                  slow_period=26.0, 
                  signal_period=9.0):
         
-        
         if result == 'optimal':
             self.optimal_result = True
             self.optimal_parameters = 0
@@ -74,8 +73,6 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
         self.signal_period_test = np.arange(4, 15, dtype = float)
         
         
-        
-        
     # ======================================================================
     # Rendering Methods
     # ======================================================================
@@ -96,8 +93,8 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
               signal_period = None, 
               column_name='price'):
         """
-        Two-dimensional tabular data structure containing a price series and 
-        claculated macd time series.
+        Two-dimensional tabular data structure containing the original price 
+        series and calculated macd time series.
         
         Parameters
         ----------
@@ -192,7 +189,7 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
             (np.sqrt(annualisation_factor) * strategy_returns.mean()) - risk_free_rate
         )
         
-        return excess_return / returns.std()
+        return excess_return / strategy_returns.std()
     
     
     def _fit(self, X, y, annualisation_factor, risk_free_rate):
