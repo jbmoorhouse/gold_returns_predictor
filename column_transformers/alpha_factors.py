@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import talib
 from tqdm import tqdm
+from column_transformers.technical_indicators import StochasticRsi
 
 
 

@@ -1,6 +1,62 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 import pandas as pd
 import numpy as np
+import talib
+
+
+class StochasticRsi(BaseEstimator, TransformerMixin):
+    
+    # ======================================================================
+    # Constructors
+    # ======================================================================
+    
+    def __init__(self, timeperiod=14, k=3, d=3):
+        self.timeperiod = timeperiod
+        self.k = k
+        self.d = d
+       
+    # ======================================================================
+    # Indicator methods
+    # ======================================================================
+    
+    def _rsi(self, X):
+        real = X.values
+        return talib.RSI(real, timeperiod = self.timeperiod)
+    
+    
+    def _stoch_rsi(self, X):
+        rsi = self._rsi(X) 
+        
+        max_rsi = talib.MAX(rsi, timeperiod = self.timeperiod)
+        min_rsi = talib.MIN(rsi, timeperiod = self.timeperiod)
+        
+        fastk = talib.SMA(
+            real = ((rsi - min_rsi) / (max_rsi - min_rsi)) * 100,
+            timeperiod = self.k
+        )
+        fastd = talib.SMA(real=fastk, timeperiod=self.d) 
+        
+        return np.c_[X, fastk, fastd]
+
+    
+    # ======================================================================
+    # Public methods
+    # ======================================================================
+    
+    
+    def fit(self, X, y=None):
+        return self
+
+    
+    def transform(self, X, y=None):
+        stoch_rsi = self._stoch_rsi(X)
+        
+        if y:
+            return np.c_[stoch_rsi, y]
+        else:
+            return stoch_rsi
+        
+        
 
 class StochRsiSignal(BaseEstimator, TransformerMixin):
     
