@@ -294,3 +294,245 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
         )
         
         return price_macd_df
+    
+    
+#     from abc import ABC, abstractmethod
+
+# class BaseIndicator(ABC, BaseEstimator):
+    
+#     @abstractmethod
+#     def __init__(self, 
+#                  criterion, 
+#                  optimal, 
+#                  top_n, 
+#                  length_min,
+#                  stepsize):
+        
+#         self.criterion = criterion
+#         self.optimal = optimal
+#         self.top_n = top_n
+#         self.length_min = length_min
+#         self.stepsize = stepsize
+        
+#     # ======================================================================
+#     # User implemented methods
+#     # ======================================================================    
+    
+#     @abstractmethod
+#     def _price_indicator(self, **kwargs):
+#         pass
+    
+    
+    
+# class BaseStrategy(BaseIndicator, TransformerMixin):
+    
+#     # ======================================================================
+#     # Constants
+#     # ======================================================================
+    
+    
+#     # ======================================================================
+#     # Constructors
+#     # ======================================================================
+    
+#     @abstractmethod
+#     def __init__(self, 
+#                  criterion, 
+#                  optimal, 
+#                  top_n, 
+#                  length_min,
+#                  stepsize,
+#                  **kwargs):
+        
+#         self.criterion = criterion
+#         self.optimal = optimal
+#         self.top_n = top_n
+#         self.length_min = length_min
+#         self.stepsize = stepsize 
+    
+#     # ======================================================================
+#     # User implemented methods
+#     # ======================================================================
+    
+#     def _indicator_params(self, indicator_params):
+#         for param_name, param in self.indicator_params.items():
+#             param_range = range(self.length_min, param + 1)
+#             yield param_range
+        
+        
+#     def _overbought_region(self, overbought_upper, overbought_lower):
+#         short_entry = long_exit = range(
+#             overbought_lower, overbought_upper, stepsize)
+
+#         return short_entry, long_exit
+
+    
+#     def _oversold_region(self, oversold_upper, oversold_lower):
+#         long_entry = short_exit = range(
+#             oversold_lower, oversold_upper, stepsize)
+
+#         return long_entry, short_exit
+
+    
+#     def _parameter_grid(self):
+#         ind_param_ranges = list(_indicator_params(self.indicator_params))
+
+#         long_entry, short_exit = _oversold_region(
+#             self.oversold_upper, 
+#             self.oversold_lower)
+
+#         short_entry, long_exit = _overbought_region(
+#             self.overbought_upper, 
+#             self.overbought_lower)
+
+#         params = ind_param_ranges + [
+#             long_entry, long_exit, short_entry, short_exit
+#         ] 
+
+#         return cartesian(params)
+    
+#     @abstractmethod
+#     def _long_signal(self, price_indicator, long_entry, long_exit):
+#         pass
+    
+#     @abstractmethod
+#     def _short_signal(self, price_indicator, short_entry, short_exit):
+#         pass
+    
+#     # ======================================================================
+#     # Strategy methods
+#     # ======================================================================
+    
+#     def _asset_returns(self, price_indicator):
+#         return (np.diff(
+#             price_indicator[:, self.PRICE]) / 
+#             price_indicator[:-1, self.PRICE]
+#         )
+    
+#     def _strategy_returns(self,
+#                           price_indicator, 
+#                           long_entry, 
+#                           long_exit, 
+#                           short_entry, 
+#                           short_exit):
+        
+#         # generate strategy long/short signal and asset returns
+#         long_signal = self._long_signal(price_indicator, long_entry, long_exit)
+#         short_signal = self._short_signal(price_indicator, short_entry, short_exit)
+        
+#         # calculate the assets simple returns 
+#         asset_returns = self._asset_returns(indicator)
+        
+#         return (asset_returns*long_signal) + (asset_returns*short_signal)
+    
+    
+#     def _criterion(self, 
+#                    strategy_returns, 
+#                    annualisation_factor, 
+#                    risk_free_rate):
+        
+#         excess_return = strategy_returns.mean() - risk_free_rate
+        
+#         return np.sqrt(annualisation_factor) * excess_return / strategy_returns.std()
+    
+    
+#     def _fit(self, X, y, annualisation_factor, risk_free_rate):
+   
+#         for params in tqdm(self.parameter_grid):
+#             t, k, d, l_en, l_ex, s_en, s_ex = params
+                
+#             indicator = self._price_indicator(X, t, k, d)
+#             strategy_returns = self._strategy_returns(
+#                 price_indicator, l_en, l_ex, s_en, s_ex
+#             )
+
+#             ratio = self._criterion(
+#                     strategy_returns, annualisation_factor, risk_free_rate
+#             )
+
+#             if self.optimal:
+#                 if ratio > self.ratio:
+#                     self.ratio = ratio
+#                     self.parameters =  np.array([t, k, d, l_en, l_ex, s_en, s_ex])
+#             else:
+#                 argmin = self.top_n_strategies[:, self.RATIO].argmin()
+                
+#                 if ratio > self.top_n_strategies[argmin, self.RATIO]:
+#                     self.top_n_strategies[argmin] = [
+#                         t, k, d, l_en, l_ex, s_en, s_ex, ratio
+#                     ] 
+    
+    
+    
+    
+# class t(BaseStrategy):
+    
+#     # ======================================================================
+#     # Constants
+#     # ======================================================================
+    
+#     PRICE, FASTK, FASTD, RATIO = 0, 1, 2, 7
+    
+#     def __init__(self,
+#                  criterion = 'sharpe',
+#                  optimal = True,
+#                  top_n = False,
+#                  length_min = 2,
+#                  stepsize = 20,
+#                  oversold_upper = 30,
+#                  oversold_lower = 10,
+#                  overbought_upper = 90,
+#                  overbought_lower = 50,
+#                  indicator_params = {}):
+        
+#         super().__init__(criterion = 'sharpe',
+#                         optimal = True,
+#                         top_n = False,
+#                         length_min = 2,
+#                         stepsize = 20)
+        
+#         self.oversold_upper = oversold_upper
+#         self.oversold_lower = oversold_lower
+#         self.overbought_upper = overbought_upper
+#         self.overbought_lower = overbought_lower
+#         self.indicator_params = indicator_params
+#         self.parameter_grid = self._parameter_grid()
+
+
+#     def _price_indicator(self, X, timeperiod, fastk, fastd):
+#         ind = StochasticRsi(timeperiod, fastk, fastd)
+        
+#         return ind.fit_transform(X)
+        
+#     def _long_signal(self, _price_indicator, long_entry, long_exit):
+        
+#         # Use np.insert if shift is greater than 1
+#         signal_entry = _price_indicator[:, self.FASTK] > long_entry
+#         signal_hold = _price_indicator[:, self.FASTK] > long_exit
+        
+#         # Define the long signal
+#         long = signal_entry | signal_hold
+        
+#         return long[:-1] * 1
+    
+    
+#     def _short_signal(self, _price_indicator, short_entry, short_exit):
+        
+#         #Use np.insert if shift is greater than 1
+#         signal_entry = _price_indicator[:, self.FASTK] < short_entry
+#         signal_hold = _price_indicator[:, self.FASTK] < short_exit
+        
+#         # Define the long signal
+#         short = signal_entry | signal_hold
+        
+#         return short[:-1] * -1
+    
+#     def fit(self, X, y=None, annualisation_factor=252, risk_free_rate=0.00):
+        
+#         super()._fit(X, y, annualisation_factor, risk_free_rate)
+#         return self
+    
+        
+# s = t(indicator_params = dict(time_period = 14, fastk = 5, fastd=5))
+
+# s.fit(x)
