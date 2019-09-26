@@ -231,7 +231,7 @@ class BaseStrategy(BaseIndicator, TransformerMixin):
     
     def fit(self, X, y=None):
         
-        X = check_array(X)
+        X = check_array(X, force_all_finite=False)
    
         for p in tqdm(self.parameter_grid):
             ind_params={i:p[i] for i in self.indicator_param_names}
@@ -252,6 +252,7 @@ class BaseStrategy(BaseIndicator, TransformerMixin):
             )
 
             if self.optimal:
+                
                 if ratio > self.ratio:
                     self.ratio = ratio
                     self.parameters = p
@@ -271,7 +272,7 @@ class BaseStrategy(BaseIndicator, TransformerMixin):
     
     def transform(self, X, y=None, n=None):
         
-        X = check_array(X)
+        X = check_array(X, force_all_finite=False)
         
         if self.top_n:
             if isinstance(n, int):

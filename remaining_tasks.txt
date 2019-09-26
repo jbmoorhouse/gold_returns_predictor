@@ -1,5 +1,5 @@
-* CCI
-* Top 10 macd strategies. Cross validation?
 * Volatility feature. Can this feature indicate when to reduce exposure?
 * Build model with these two features
-* Improve the efficiency of the macd fit method (Cython?)
+* Complete the comments and documentation
+* Autocorrelation checker
+
