@@ -36,288 +36,50 @@ class MacdStrategy(BaseEstimator, TransformerMixin):
     
     """
     
-    # ======================================================================
-    # Constants
-    # ======================================================================
-    
-    PRICE, MACD, MACD_SIGNAL, MACD_HIST, RATIO = 0, 1, 2, 3, 3
-    
-    # ======================================================================
-    # Constructors
-    # ======================================================================
 
-    def __init__(self, 
-                 result = 'optimal',
-                 fast_period=12.0, 
-                 slow_period=26.0, 
-                 signal_period=9.0):
-        
-        if result == 'optimal':
-            self.optimal_result = True
-            self.optimal_parameters = 0
-        elif isinstance(result, (int, float)):
-            self.optimal_result = False
-            self.optimal_parameters = np.zeros([int(result), 4])
-        else:
-            raise ValueError(
-                "'result' must be either a valid string or an int/float ")
-        
-        # set default model parameters if user wishes to use self.transform
-        # with experimental parameters
-        self.fast_period = fast_period
-        self.slow_period = slow_period
-        self.signal_period = signal_period
-        
-        # set reasonable test time constants
-        self.fast_period_test = np.arange(2,20, dtype = float)
-        self.slow_period_test = np.arange(3, 30, dtype = float)
-        self.signal_period_test = np.arange(4, 15, dtype = float)
-        
-        
-    # ======================================================================
-    # Rendering Methods
-    # ======================================================================
-
-        
-    def __repr__(self):
-        return "TBD"
-    
-    
-    # ======================================================================
-    # strategy statistics/signals
-    # ======================================================================
-    
-    def _macd(self,
-              X = None,
-              fast_period = None, 
-              slow_period = None, 
-              signal_period = None, 
-              column_name='price'):
-        """
-        Two-dimensional tabular data structure containing the original price 
-        series and calculated macd time series.
-        
-        Parameters
-        ----------
-        X : pd.DataFrame or pd.Series
-             DataFrame or Series containing the price time series for a 
-             single asset
-        column_name : str, default price
-            The name of the column containing the price time series data
-            
-        Returns
-        -------
-        X_macd : pd.DataFrame
-            Returns a DataFrame consisting of the original price time
-            series and the calculated macd time series data
-          
-        """
-        
-        # determine if default macd quantities shoud be used
-        if fast_period is None:
-            fast_period = self.fast_period
-        if slow_period is None:
-            slow_period = self.slow_period
-        if signal_period is None:
-            signal_period = self.signal_period
-            
-            
-        if not isinstance(column_name, str):
-            raise TypeError("'column_name' must be of type str")
-
-            
-        if not isinstance(X, (pd.DataFrame, pd.Series)):
-            raise TypeError("'X' must be of type pd.DataFrame or pd.Series")            
-        elif isinstance(X, pd.DataFrame):
-            price_series = X[column_name].values
-        elif isinstance(X, pd.Series):
-            price_series = X.values
-            
-        # returns a tuple of macd, macd_signal and mach_hist
-        macd_statistics = talib.MACD(
-            price_series,
-            fastperiod = fast_period,
-            slowperiod = slow_period,
-            signalperiod = signal_period
-        )    
-        
-        price_macd = np.c_[price_series, np.array(macd_statistics).T]
-        
-        return price_macd[~np.isnan(price_macd).any(1), :]
-
-            
-    def _long_signal(self, price_macd):
-        long = price_macd[:, self.MACD] > price_macd[:, self.MACD_SIGNAL]
-        
-        return long[:-1] * 1
-    
-    
-    def _short_signal(self, price_macd):
-        short = price_macd[:, self.MACD] < price_macd[:, self.MACD_SIGNAL]
-       
-        return short[:-1] * -1
-    
-    
-    def _asset_returns(self, price_macd):
-        return (
-            np.diff(price_macd[:, self.PRICE]) / price_macd[:-1, self.PRICE]
-        )
-    
-    
-    def _strategy_returns(self, price_macd):
-        
-        # generate strategy long/short signal and asset returns
-        long_signal = self._long_signal(price_macd)
-        short_signal = self._short_signal(price_macd)
-        
-        # calculate the assets simple returns 
-        asset_returns = self._asset_returns(price_macd)
-        
-        return (asset_returns * long_signal) + (asset_returns * short_signal)
-
-   
-    # ======================================================================
-    # Parameter estimation
-    # ======================================================================
-
-    
-    def _cost_function(self, 
-                       strategy_returns, 
-                       annualisation_factor, 
-                       risk_free_rate):
-        
-        excess_return = (
-            (np.sqrt(annualisation_factor) * strategy_returns.mean()) - risk_free_rate
-        )
-        
-        return excess_return / strategy_returns.std()
-    
-    
-    def _fit(self, X, y, annualisation_factor, risk_free_rate):
-        
-        for f in tqdm(self.fast_period_test):
-            for s in self.slow_period_test:
-                for p in self.signal_period_test:
-                    
-                    price_macd = self._macd(X, f, s, p)
-                    strategy_returns = self._strategy_returns(price_macd)
-                    
-                    ratio = self._cost_function(
-                            strategy_returns,
-                            annualisation_factor,
-                            risk_free_rate
-                        )
-                    
-                    if self.optimal_result:
-                        if ratio > self.optimal_ratio:
-                            self.ratio = ratio
-                            self.fast_period = f
-                            self.slow_period = s
-                            self.signal_period = p
-                    else:
-                        argmin = self.optimal_parameters[:, self.RATIO].argmin()
-                        
-                        if ratio > self.optimal_parameters[argmin, self.RATIO]:
-                            self.optimal_parameters[argmin] = [
-                                f, s, p, ratio
-                            ]
-                        
-        
-    # ======================================================================
-    # Public methods
-    # ======================================================================
-    
-    
-    def fit(self, X, y=None, annualisation_factor=252, risk_free_rate=0.00):
-        
-        self._fit(X, y, annualisation_factor, risk_free_rate)
-        return self 
-        
-        
-    def transform(self, X, y=None, as_frame=False):
-        """
-        Transform the asset price series into a return time series using the 
-        predefined macd momentum based strategy. 
-        
-        Parameters
-        ----------
-        X : pd.DataFrame or pd.Series
-            DataFrame or Series containing the price time series for a 
-            single asset 
-        y : pd.DataFrame or pd.Series, default None
-            DataFrame or Series containing the price time series for a 
-            single asset
-            
-        Returns
-        -------
-        X_macd :  X_macd : pd.DataFrame
-            Returns a DataFrame consisting of the original price time
-            series, calculated macd time series data and strategy returns
-            
-        Examples
-        --------
-        
-        >>> X 
-                      price
-        Date	
-        1979-06-15	 280.00
-        1979-06-18	 278.00
-        1979-06-19	 280.30
-        1979-06-20	 281.35
-        1979-06-21	 282.30
-        1979-06-22	 283.45
-        
-        
-        >>> strategy = MacdStrategy()
-        >>> strategy.transform(X)
-        
-                    price  macd  macd_signal     ...  macd_strategy_returns
-        Date					
-        1979-06-15	  280   NaN	         NaN	 ...	                NaN
-        ...           ...   ...          ...     ...                    ...
-        1979-08-02	  291	4.07	     6.20	 ...	          -0.004826
-        1979-08-03	  287	2.93         5.55	 ...	           0.017153
-        1979-08-06	  283	1.70	    4.779	 ...	           0.013264
-        
-        """
-        
-        price_macd = self._macd(X)
-        
-        index_size = X.index.size
-        new_index = X.index[(index_size) - price_macd.shape[0]:]
-        
-        price_macd_df = pd.DataFrame(price_macd, index = new_index)
-        asset_returns = np.insert(self._strategy_returns(price_macd), 0, np.nan)
-      
-        price_macd_df['macd_strategy_returns'] = (
-            asset_returns
-        )
-        
-        return price_macd_df
-    
     
 class BaseIndicator(ABC, BaseEstimator):
     
     @abstractmethod
     def __init__(self, 
-                 criterion, 
-                 optimal, 
-                 top_n, 
-                 length_min,
-                 stepsize):
+                 criterion = 'sharpe', 
+                 optimal = True, 
+                 top_n = False, 
+                 **kwargs):
         
         self.criterion = criterion
-        self.optimal = optimal
-        self.top_n = top_n
-        self.length_min = length_min
-        self.stepsize = stepsize
+        
+        if optimal and not top_n:
+            self.optimal = optimal
+            self.top_n = top_n
+            self.ratio = 0
+            
+        elif optimal and top_n:
+            warnings.warn("Both 'optimal' and 'top_n' were detected." 
+                          "'optimal' has been set to 'False'. Remove top_n"
+                          " if this behaviour is not desired")
+            
+            self.optimal = False
+            
+            if isinstance(top_n, int):
+                self.top_n = top_n
+            else:
+                raise TypeError("'top_n must be of type 'int")  
+                
+        elif not optimal and not top_n:
+            raise ValueError("Please specify either 'optimal' or 'top_n'.")
+        
+            
+        self.indicator_params = kwargs
+        self.indicator_param_names = [k for k, v in kwargs.items()]
+        
         
     # ======================================================================
     # User implemented methods
     # ======================================================================    
     
     @abstractmethod
-    def _price_indicator(self, **kwargs):
+    def _price_indicator(self, X, **kwargs):
         pass
     
     
@@ -325,98 +87,93 @@ class BaseIndicator(ABC, BaseEstimator):
 class BaseStrategy(BaseIndicator, TransformerMixin):
     
     # ======================================================================
-    # Constants
-    # ======================================================================
-    
-    
-    # ======================================================================
     # Constructors
     # ======================================================================
     
     @abstractmethod
     def __init__(self, 
-                 criterion, 
-                 optimal, 
-                 top_n, 
-                 length_min,
-                 stepsize,
-                 annualisation_factor,
-                 risk_free_rate,
+                 annualisation_factor = 252,
+                 risk_free_rate = 0.00,
+                 os_region=None,
+                 ob_region=None,
                  **kwargs):
         
-        self.criterion = criterion
+        super().__init__(**kwargs)
         
-        if optimal and top_n:
-            raise ValueError("Both 'optimal' and 'top_n' were detected." 
-                             "Choose either 'optimal' or 'top_n'.")
-        elif not optimal and not top_n:
-            raise ValueError("Please specify either 'optimal' or 'top_n'.")
+        if not self.indicator_params:
+            raise TypeError("Please specify indicator parameters. See"
+                            " Documentation for example")
         
-        self.optimal = optimal
-        
-        if optimal:
-            self.ratio = 0
-            
-        self.top_n = top_n
-        
-        if top_n:
-            if isinstance(top_n, (int, float)):
-                self.top_n_strategies = np.zeros([top_n, 8])
-            else:
-                raise TypeError("'top_n must be of type 'int")
-
-        self.length_min = length_min
-        self.stepsize = stepsize 
         self.annualisation_factor = annualisation_factor
         self.risk_free_rate = risk_free_rate
-    
+        
+        regions = (os_region, ob_region)
+        
+        if any(regions) and not all(regions):
+            raise TypeError("NoneType was detected for one or more of the"
+                            " overbought or oversold regions")
+        elif all(regions):
+            
+            if all(isinstance(r, range) for r in regions):
+                self.long_short_regions = True
+                self.strategy_params = dict(
+                    long_entry = os_region,
+                    long_exit = ob_region,
+                    short_entry = ob_region,
+                    short_exit = os_region
+                )
+                
+                # Define the long/short actions
+                self.strategy_param_names = [
+                    k for k, v in self.strategy_params.items()
+                ]
+            else:
+                raise TypeError("os_region and ob_region must both be "
+                               "of type 'range'.")
+        else:
+            self.long_short_regions = False
+        
+        self.os_region = os_region
+        self.ob_region = ob_region
+        self.parameter_grid = self._parameter_grid()
+        
+        if self.top_n:
+            p = {k:0. for k, v in self.model_parameters.items()}
+            r = dict(ratio = 0.)
+            
+            self.top_n_strategies = [{**p,**r} for n in range(self.top_n)]
+
+            
+    def _parameter_grid(self):
+        self.model_parameters = self.indicator_params
+
+        if self.long_short_regions:
+            self.model_parameters = {
+                **self.model_parameters, **self.strategy_params
+            }
+            
+        param_names = [k for k, v in self.model_parameters.items()]
+        param_ranges = [v for k, v in self.model_parameters.items()]
+
+        parameter_grid = [
+            {i:j for i, j in zip(param_names, row)} 
+            for row in product(*param_ranges)
+        ]
+        
+        return parameter_grid
+        
     # ======================================================================
     # User implemented methods
     # ======================================================================
     
-    def _indicator_params(self, indicator_params):
-        for param_name, param in self.indicator_params.items():
-            param_range = range(self.length_min, param + 1)
-            yield param_range
-        
-        
-    def _overbought_region(self, overbought_upper, overbought_lower):
-        short_entry = long_exit = range(
-            overbought_lower, overbought_upper, self.stepsize)
-
-        return short_entry, long_exit
-
-    
-    def _oversold_region(self, oversold_upper, oversold_lower):
-        long_entry = short_exit = range(
-            oversold_lower, oversold_upper, self.stepsize)
-
-        return long_entry, short_exit
-
-    
-    def _parameter_grid(self):
-        ind_param_ranges = list(self._indicator_params(self.indicator_params))
-
-        long_entry, short_exit = self._oversold_region(
-            self.oversold_upper, 
-            self.oversold_lower)
-
-        short_entry, long_exit = self._overbought_region(
-            self.overbought_upper, 
-            self.overbought_lower)
-
-        params = ind_param_ranges + [
-            long_entry, long_exit, short_entry, short_exit
-        ] 
-
-        return cartesian(params)
     
     @abstractmethod
-    def _long_signal(self, price_indicator, long_entry, long_exit):
+    def _long_signal(self, price_indicator, **kwargs):
         pass
     
+    
     @abstractmethod
-    def _short_signal(self, price_indicator, short_entry, short_exit):
+    def _short_signal(self, price_indicator, **kwargs):
         pass
     
     # ======================================================================
@@ -431,14 +188,22 @@ class BaseStrategy(BaseIndicator, TransformerMixin):
     
     def _strategy_returns(self,
                           price_indicator, 
-                          long_entry, 
-                          long_exit, 
-                          short_entry, 
-                          short_exit):
+                          long_entry=None, 
+                          long_exit=None, 
+                          short_entry=None, 
+                          short_exit=None):
         
         # generate strategy long/short signal and asset returns
-        long_signal = self._long_signal(price_indicator, long_entry, long_exit)
-        short_signal = self._short_signal(price_indicator, short_entry, short_exit)
+        if self.long_short_regions:
+            long_signal = self._long_signal(
+                price_indicator, long_entry, long_exit
+            )
+            short_signal = self._short_signal(
+                price_indicator, short_entry, short_exit
+            )
+        else:
+            long_signal = self._long_signal(price_indicator)
+            short_signal = self._short_signal(price_indicator)
         
         # calculate the assets simple returns 
         asset_returns = self._asset_returns(price_indicator)
@@ -452,36 +217,45 @@ class BaseStrategy(BaseIndicator, TransformerMixin):
                    risk_free_rate):
         
         excess_return = strategy_returns.mean() - risk_free_rate
+        sharpe_ratio = excess_return / strategy_returns.std()
         
-        return np.sqrt(annualisation_factor) * excess_return / strategy_returns.std()
+        return np.sqrt(annualisation_factor) * sharpe_ratio 
     
     
     def fit(self, X, y=None):
    
-        for params in tqdm(self.parameter_grid):
-            t, k, d, l_en, l_ex, s_en, s_ex = params
-                
-            price_indicator = self._price_indicator(X, t, k, d)
-            strategy_returns = self._strategy_returns(
-                price_indicator, l_en, l_ex, s_en, s_ex
-            )
-
+        for p in tqdm_notebook(self.parameter_grid):
+            ind_params={i:p[i] for i in self.indicator_param_names}
+            price_indicator = self._price_indicator(X, **ind_params)
+            
+            if self.long_short_regions:
+                strategy_params={i:p[i] for i in self.strategy_param_names}
+                strategy_returns = self._strategy_returns(
+                    price_indicator, **strategy_params
+                )
+            else:
+                strategy_returns = self._strategy_returns(price_indicator)
+            
             ratio = self._criterion(
-                    strategy_returns, self.annualisation_factor, self.risk_free_rate
+                strategy_returns, 
+                self.annualisation_factor, 
+                self.risk_free_rate
             )
 
             if self.optimal:
                 if ratio > self.ratio:
                     self.ratio = ratio
-                    self.parameters =  np.array([t, k, d, l_en, l_ex, s_en, s_ex])
-            else:
-                argmin = self.top_n_strategies[:, self.RATIO].argmin()
+                    self.parameters = p
+            else: 
+                current_ratios = [d['ratio'] for d in self.top_n_strategies]
+                min_strat = min(
+                    enumerate(self.top_n_strategies), key=lambda k:k[1]['ratio']
+                )
                 
-                if ratio > self.top_n_strategies[argmin, self.RATIO]:
-                    self.top_n_strategies[argmin] = [
-                        t, k, d, l_en, l_ex, s_en, s_ex, ratio
-                    ] 
-                    
+                if ratio in current_ratios:
+                    continue
+                elif ratio > min_strat[1]['ratio']:
+                    self.top_n_strategies[min_strat[0]] = {**p, **{"ratio":ratio}}
         return self
     
     
@@ -489,95 +263,29 @@ class BaseStrategy(BaseIndicator, TransformerMixin):
         
         if self.top_n:
             if isinstance(n, int):
-                t, k, d = self.top_n_strategies[n, :3]
-                l_en, l_ex, s_en, s_ex = self.top_n_strategies[n, 3:self.RATIO]
+                p = self.top_n_strategies[n]
             else:
                 raise ValueError("'n = {}' is invalid. Please specify number" 
                                  "between 0 and {}".format(
-                                     n, self.top_n_strategies.shape[0] - 1)
+                                     n, len(self.top_n_strategies) - 1)
                                 )
         else:
             if n is not None:
                 raise ValueError("'n = {}' is invalid. 'optimal' strategy" 
                                  "paramters only. 'n' must be NoneType".format(n))
+            
+            p = self.parameters
+        
+        ind_params = {i:p[i] for i in self.indicator_param_names}
+        price_indicator = self._price_indicator(X, **ind_params)
+
+        if self.long_short_regions:
+            strategy_params = {i:p[i] for i in self.strategy_param_names}
+            strategy_returns = self._strategy_returns(
+                price_indicator, **strategy_params
+            )
+
+        else:
+            strategy_returns = self._strategy_returns(price_indicator)
                 
-            t, k, d = self.parameters[:3]
-            l_en, l_ex, s_en, s_ex = self.parameters[3:] 
-              
-        price_indicator = self._price_indicator(X, t, k, d)
-        strategy_returns = self._strategy_returns(
-            price_indicator, l_en, l_ex, s_en, s_ex
-        )
-        
         return np.c_[price_indicator[1:], strategy_returns]
-        
-        
-class StochasticRsiStrategy(BaseStrategy):
-    
-    # ======================================================================
-    # Constants
-    # ======================================================================
-    
-    PRICE, FASTK, FASTD, RATIO = 0, 1, 2, 7
-    
-    def __init__(self,
-                 criterion = 'sharpe',
-                 optimal = True,
-                 top_n = False,
-                 length_min = 2,
-                 stepsize = 10,
-                 annualisation_factor = 252,
-                 risk_free_rate = 0.00,
-                 oversold_upper = 30,
-                 oversold_lower = 10,
-                 overbought_upper = 90,
-                 overbought_lower = 50,
-                 indicator_params = {}):
-        
-        
-        super().__init__(criterion = criterion,
-                         optimal = optimal,
-                         top_n = top_n,
-                         length_min = length_min,
-                         stepsize = stepsize,
-                         annualisation_factor = annualisation_factor ,
-                         risk_free_rate = risk_free_rate)
-        
-        self.oversold_upper = oversold_upper
-        self.oversold_lower = oversold_lower
-        self.overbought_upper = overbought_upper
-        self.overbought_lower = overbought_lower
-        self.indicator_params = indicator_params
-        self.parameter_grid = self._parameter_grid()
-        
-        #reorganise this
-        self.ratio = 0
-
-
-    def _price_indicator(self, X, timeperiod, fastk, fastd):
-        ind = StochasticRsi(timeperiod, fastk, fastd)
-        
-        return ind.fit_transform(X)
-        
-    def _long_signal(self, _price_indicator, long_entry, long_exit):
-        
-        # Use np.insert if shift is greater than 1
-        signal_entry = _price_indicator[:, self.FASTK] > long_entry
-        signal_hold = _price_indicator[:, self.FASTK] > long_exit
-        
-        # Define the long signal
-        long = signal_entry | signal_hold
-        
-        return long[:-1] * 1
-    
-    
-    def _short_signal(self, _price_indicator, short_entry, short_exit):
-        
-        #Use np.insert if shift is greater than 1
-        signal_entry = _price_indicator[:, self.FASTK] < short_entry
-        signal_hold = _price_indicator[:, self.FASTK] <= short_exit
-        
-        # Define the long signal
-        short = signal_entry | signal_hold
-        
-        return short[:-1] * -1
