@@ -1,10 +1,17 @@
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.utils.validation import check_array
+
 import pandas as pd
 import numpy as np
 import talib
+
 from tqdm import tqdm
+
 from column_transformers.technical_indicators import StochasticRsi
+
 from abc import ABC, abstractmethod
+from itertools import product
+from operator import itemgetter
 
 
 class MacdStrategy(BaseEstimator, TransformerMixin):
@@ -181,8 +188,8 @@ class BaseStrategy(BaseIndicator, TransformerMixin):
     # ======================================================================
     
     def _asset_returns(self, price_indicator):
-        return (np.diff(
-            price_indicator[:, self.PRICE]) / 
+        return (
+            np.diff(price_indicator[:, self.PRICE]) / 
             price_indicator[:-1, self.PRICE]
         )
     
@@ -223,8 +230,10 @@ class BaseStrategy(BaseIndicator, TransformerMixin):
     
     
     def fit(self, X, y=None):
+        
+        X = check_array(X)
    
-        for p in tqdm_notebook(self.parameter_grid):
+        for p in tqdm(self.parameter_grid):
             ind_params={i:p[i] for i in self.indicator_param_names}
             price_indicator = self._price_indicator(X, **ind_params)
             
@@ -256,10 +265,13 @@ class BaseStrategy(BaseIndicator, TransformerMixin):
                     continue
                 elif ratio > min_strat[1]['ratio']:
                     self.top_n_strategies[min_strat[0]] = {**p, **{"ratio":ratio}}
+        
         return self
     
     
     def transform(self, X, y=None, n=None):
+        
+        X = check_array(X)
         
         if self.top_n:
             if isinstance(n, int):
@@ -288,4 +300,6 @@ class BaseStrategy(BaseIndicator, TransformerMixin):
         else:
             strategy_returns = self._strategy_returns(price_indicator)
                 
+        # strategy returns excludes np.nan from asset_returns. This is account
+        # for by slicing price_indicator appropriately.
         return np.c_[price_indicator[1:], strategy_returns]

@@ -20,8 +20,7 @@ class StochasticRsi(BaseEstimator, TransformerMixin):
     # ======================================================================
     
     def _rsi(self, X):
-        real = X.values
-        return talib.RSI(real, timeperiod = self.timeperiod)
+        return talib.RSI(X, timeperiod = self.timeperiod)
     
     
     def _stoch_rsi(self, X):
