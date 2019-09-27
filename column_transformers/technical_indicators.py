@@ -10,16 +10,18 @@ class StochasticRsi(BaseEstimator, TransformerMixin):
     # Constructors
     # ======================================================================
     
-    def __init__(self, timeperiod=14, k=3, d=3):
+    def __init__(self, timeperiod=14, k=3, d=3, price_index = 0):
         self.timeperiod = timeperiod
         self.k = k
         self.d = d
+        self.price_index = price_index
        
     # ======================================================================
     # Indicator methods
     # ======================================================================
     
     def _rsi(self, X):
+        real = 
         return talib.RSI(X, timeperiod = self.timeperiod)
     
     

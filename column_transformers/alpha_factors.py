@@ -1,3 +1,9 @@
+"""
+This module defines base abstract classes for constructing trading 
+strategies using technical indicators or any other method which returns. talib is used in conjunction with self
+defined indicators. 
+"""
+
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_array
 
@@ -11,37 +17,6 @@ from column_transformers.technical_indicators import StochasticRsi
 
 from abc import ABC, abstractmethod
 from itertools import product
-from operator import itemgetter
-
-
-class MacdStrategy(BaseEstimator, TransformerMixin):
-    """
-    Stores the parameters to constrain a moving average convergence/
-    divergence (MACD) momentum based strategy. The indicator consists of
-    three components (the 'macd series', the 'average series' of the macd 
-    series and the 'divergence'). The 'macd series' is the difference
-    between a 'fast' exponential moving average (EMA) and a 'slow' EMA. 
-    The speed refers to the period of the EMA. The 'average series' is an 
-    EMA of the 'macd series'. The 'divergence' is the difference between 
-    these two series. 
-    
-    Parameters
-    ----------
-    result : str or int, default 'optimal'
-    fast_period : float, default 12.
-        Time constant for the 'fast' price series exponential moving average
-    slow_period : float, default 26.
-        Time constant for the 'slow' price series exponential moving average 
-    signal_period : float, default 9.
-        Time constant for the macd series exponential moving average  
-        
-    Examples
-    --------
-    Constructing a MacdStrategy using the default values
-    
-    >>> strategy = MacdStrategy()
-    
-    """
     
 
     
