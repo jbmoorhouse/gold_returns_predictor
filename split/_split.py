@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-class TrainValidateTest():
+class TrainValidateTest(BaseEstimator, TransformerMixin):
     """
     train_size, 
     valid_size, 

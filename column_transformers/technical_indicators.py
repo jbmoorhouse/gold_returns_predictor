@@ -10,19 +10,19 @@ class StochasticRsi(BaseEstimator, TransformerMixin):
     # Constructors
     # ======================================================================
     
-    def __init__(self, timeperiod=14, k=3, d=3, price_index = 0):
+    def __init__(self, price_index, timeperiod=14, k=3, d=3):
+        self.price_index = price_index
         self.timeperiod = timeperiod
         self.k = k
         self.d = d
-        self.price_index = price_index
        
     # ======================================================================
     # Indicator methods
     # ======================================================================
     
     def _rsi(self, X):
-        real = 
-        return talib.RSI(X, timeperiod = self.timeperiod)
+        real = X[:, self.price_index]
+        return talib.RSI(real, timeperiod = self.timeperiod)
     
     
     def _stoch_rsi(self, X):
@@ -37,7 +37,7 @@ class StochasticRsi(BaseEstimator, TransformerMixin):
         )
         fastd = talib.SMA(real=fastk, timeperiod=self.d) 
         
-        return np.c_[X, fastk, fastd]
+        return np.c_[fastk, fastd]
 
     
     # ======================================================================
@@ -52,10 +52,7 @@ class StochasticRsi(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None):
         stoch_rsi = self._stoch_rsi(X)
         
-        if y:
-            return np.c_[stoch_rsi, y]
-        else:
-            return stoch_rsi
+        return np.c_[X, stoch_rsi]
         
         
 
