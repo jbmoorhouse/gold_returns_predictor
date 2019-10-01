@@ -1,16 +1,23 @@
 """
 This module defines base abstract classes for constructing trading 
-strategies using technical indicators or any other method which returns. talib is used in conjunction with self
-defined indicators. 
+strategies using technical indicators or any other method which returns
+a eithes an array consiting of buy, sell or do nothing signals (1, -1
+and 0 respectiveley.
+
+talib is used in conjunction with self defined indicators. 
 """
+
+# Author: Joseph Moorhouse 
+# License: BSD 3 clause
+
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_array
 
 import pandas as pd
 import numpy as np
-import talib
 
+import talib
 from tqdm import tqdm
 
 from column_transformers.technical_indicators import StochasticRsi
@@ -20,14 +27,100 @@ from itertools import product
     
 
     
+# ===========================================================================
+# Base indicator 
+# ===========================================================================   
+    
+    
 class BaseIndicator(ABC, BaseEstimator):
+    """Base class for technical indicator.
+    
+    This class provides the user with a base class to define a technical 
+    indicator to be used a part of a trading strategy. 
+    
+    Parameters
+    ----------
+    **kwargs: 
+        Parameters to define the technical indicator. See 
+        https://mrjbq7.github.io/ta-lib/ for further details.
+        
+    
+    Attributes
+    ----------
+    indicator_params: dict
+        Dictionary containing the keyword arguments set upon instantiation
+    indicator_param_names: list 
+        Names of the technical indicator parameters
+        
+        
+    Notes
+    -----
+    To use this class, the abstract methods must be defined by the user.
+    self._price_indicator must be defined using a either an existing
+    technical indicator from the talib library (see 
+    https://github.com/mrjbq7/ta-lib) or a user defined indicator
+    
+    
+    Examples
+    --------
+    >>> class MacdIndicator(BaseIndicator):
+    ...
+    ...     PRICE_AXIS = 0
+    ...
+    ...     def __init__(self, fast_period, slow_period, signal_period):
+    ...         self.fastperiod = fastperiod
+    ...         self.slowperiod = slowperiod
+    ...         self.signalperiod = signalperiod
+    ...
+    ...     def _price_indicator(self, X):
+    ... 
+    ...        real = X[:, self.PRICE_AXIS]
+    ...    
+    ...        macd_statistics = talib.MACD(
+    ...                real,
+    ...                fastperiod = self.fast_period,
+    ...                slowperiod = self.slow_period,
+    ...                signalperiod = self.signal_period
+    ...            )   
+    ...
+    ...        return np.c_[X, np.array(macd_statistics).T]
+    """
+    
+    @abstractmethod
+    def __init__(self, **kwargs):
+            
+        self.indicator_params = kwargs
+        self.indicator_param_names = [k for k, v in kwargs.items()]
+        
+        
+        
+    # ----------------------------------------------------------------------
+    # User implemented methods
+    
+    @abstractmethod
+    def _price_indicator(self, X, **kwargs):
+        pass
+    
+    
+    
+class BaseStrategy(BaseIndicator, TransformerMixin):
+    
+    # ----------------------------------------------------------------------
+    # Constructors
+    
     
     @abstractmethod
     def __init__(self, 
                  criterion = 'sharpe', 
                  optimal = True, 
-                 top_n = False, 
+                 top_n = False,
+                 annualisation_factor = 252,
+                 risk_free_rate = 0.00,
+                 os_region=None,
+                 ob_region=None,
                  **kwargs):
+        
+        super().__init__(**kwargs)
         
         self.criterion = criterion
         
@@ -51,36 +144,6 @@ class BaseIndicator(ABC, BaseEstimator):
         elif not optimal and not top_n:
             raise ValueError("Please specify either 'optimal' or 'top_n'.")
         
-            
-        self.indicator_params = kwargs
-        self.indicator_param_names = [k for k, v in kwargs.items()]
-        
-        
-    # ======================================================================
-    # User implemented methods
-    # ======================================================================    
-    
-    @abstractmethod
-    def _price_indicator(self, X, **kwargs):
-        pass
-    
-    
-    
-class BaseStrategy(BaseIndicator, TransformerMixin):
-    
-    # ======================================================================
-    # Constructors
-    # ======================================================================
-    
-    @abstractmethod
-    def __init__(self, 
-                 annualisation_factor = 252,
-                 risk_free_rate = 0.00,
-                 os_region=None,
-                 ob_region=None,
-                 **kwargs):
-        
-        super().__init__(**kwargs)
         
         if not self.indicator_params:
             raise TypeError("Please specify indicator parameters. See"
