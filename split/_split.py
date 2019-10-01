@@ -1,15 +1,16 @@
 import pandas as pd
 import numpy as np
 
-class TrainValidateTest(BaseEstimator, TransformerMixin):
-    """
-    train_size, 
-    valid_size, 
-    test_size
+from sklearn.base import BaseEstimator
+
+class TrainValidateTest(BaseEstimator):
     """
     
-    # ----------------------------------------------------------------------
+    """
+    
+    # ======================================================================
     # Constructors
+    # ======================================================================
     
     def __init__(self, train_size, valid_size, test_size):
         
@@ -21,16 +22,23 @@ class TrainValidateTest(BaseEstimator, TransformerMixin):
         self.train_size = train_size
         self.valid_size = valid_size
         self.test_size = test_size
-        
+    
         
     def _check_data_sizes(self, *args):
         data = np.array(args)
         return ((data < 0) | (data > 1) | (data.sum() != 1)).any()
     
-    # ----------------------------------------------------------------------
-    # fit, transform methods
+    
+    # ======================================================================
+    # Constructors
+    # ======================================================================
+    
+    
+    def fit(self, data):
+        return self
 
-    def transform(self, X, y = None):
+    def transform(self, data):
+        
         """
         Generate the train, validation, and test dataset.
 
@@ -57,20 +65,25 @@ class TrainValidateTest(BaseEstimator, TransformerMixin):
             The test target values
         """
 
-        dates = X.index
-        train_size, valid_size, test_size = (
-            self.train_size, self.valid_size, self.test_size
-        )
-
+        dates = data.index
+        
+        # define the indices for splitting data
+        train_idx = int(len(dates) * self.train_size)
+        valid_idx = int(len(dates) * (self.train_size + self.test_size))
+        indices_or_sections = [train_idx, valid_idx]
+        
+        # Generate the date regions
         train_dates, valid_dates, test_dates = np.split(
-            dates, [int(len(dates) * train_size), 
-                    int(len(dates) * (train_size + test_size))]
+            dates, 
+            indices_or_sections
         )
 
         return (
-            X.loc[train_dates, :],
-            X.loc[valid_dates, :],
-            X.loc[test_dates, :],
-            y.loc[train_dates],
-            y.loc[valid_dates],
-            y.loc[test_dates])
+            data.loc[train_dates, :], 
+            data.loc[valid_dates, :], 
+            data.loc[test_dates, :]
+        )
+        
+    
+    def fit_transform(self, data, **fit_params):
+        return self.fit(X, **fit_params).transform(data)
