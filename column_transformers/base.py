@@ -56,41 +56,17 @@ class BaseIndicator(ABC, BaseEstimator):
     Notes
     -----
     To use this class, the abstract methods must be defined by the user.
-    self._price_indicator must be defined using a either an existing
+    self.price_indicator must be defined using a either an existing
     technical indicator from the talib library (see 
     https://github.com/mrjbq7/ta-lib) or a user defined indicator
-    
-    
-    Examples
-    --------
-    >>> class MacdIndicator(BaseIndicator):
-    ...
-    ...     PRICE_AXIS = 0
-    ...
-    ...     def __init__(self, fast_period, slow_period, signal_period):
-    ...         self.fastperiod = fastperiod
-    ...         self.slowperiod = slowperiod
-    ...         self.signalperiod = signalperiod
-    ...
-    ...     def _price_indicator(self, X):
-    ... 
-    ...        real = X[:, self.PRICE_AXIS]
-    ...    
-    ...        macd_statistics = talib.MACD(
-    ...                real,
-    ...                fastperiod = self.fast_period,
-    ...                slowperiod = self.slow_period,
-    ...                signalperiod = self.signal_period
-    ...            )   
-    ...
-    ...        return np.c_[X, np.array(macd_statistics).T]
     """
     
     @abstractmethod
     def __init__(self, **kwargs):
-            
-        self.indicator_params = kwargs
-        self.indicator_param_names = [k for k, v in kwargs.items()]
+        
+        if kwargs:
+            self.indicator_params = kwargs
+            self.indicator_param_names = [k for k, v in kwargs.items()]
         
         
         
@@ -98,7 +74,56 @@ class BaseIndicator(ABC, BaseEstimator):
     # User implemented methods
     
     @abstractmethod
-    def _price_indicator(self, X, **kwargs):
+    def price_indicator(self, X, **kwargs):
+    """Return a price series and calculated tehnical indicator series/s.
+    
+    Parameters
+    ----------
+    X: pd.Series
+    
+    Examples
+    --------
+    
+    >>> class MacdIndicator(BaseIndicator):
+    ...
+    ...     PRICE_AXIS = 0
+    ...
+    ...     def price_indicator(self, 
+    ...                          X, 
+    ...                          fast_period, 
+    ...                          slow_period, 
+    ...                          signal_period):
+    ... 
+    ...        real = X[:, self.PRICE_AXIS]
+    ...    
+    ...        macd_statistics = talib.MACD(
+    ...                real,
+    ...                fastperiod = fast_period,
+    ...                slowperiod = slow_period,
+    ...                signalperiod = signal_period
+    ...            )   
+    ...
+    ...        return np.c_[X, np.array(macd_statistics).T]
+    ...
+    ...
+    >>> X
+    np.array([280.00, 278.00, ..., 650.50, 654.75])
+
+    The technical indicator may now be calculated from the price series X
+
+    >>> ind = MacdIndicator()
+    >>> ind.price_indicator(X, 12, 26, 9)
+    
+    array([[ 2.80000000e+02,  nan,  nan,
+             nan],
+           [ 2.78000000e+02,  nan,  nan,
+             nan],
+               ...,
+           [ 6.50500000e+02, -5.91181455e+00, -5.33374644e+00,
+            -5.78068106e-01],
+           [ 6.54750000e+02, -4.86376135e+00, -5.27499831e+00,
+             4.11236956e-01]])
+    """
         pass
     
     
@@ -273,7 +298,7 @@ class BaseStrategy(BaseIndicator, TransformerMixin):
    
         for p in tqdm(self.parameter_grid):
             ind_params={i:p[i] for i in self.indicator_param_names}
-            price_indicator = self._price_indicator(X, **ind_params)
+            price_indicator = self.price_indicator(X, **ind_params)
             
             if self.long_short_regions:
                 strategy_params={i:p[i] for i in self.strategy_param_names}
@@ -328,7 +353,7 @@ class BaseStrategy(BaseIndicator, TransformerMixin):
             p = self.parameters
         
         ind_params = {i:p[i] for i in self.indicator_param_names}
-        price_indicator = self._price_indicator(X, **ind_params)
+        price_indicator = self.price_indicator(X, **ind_params)
 
         if self.long_short_regions:
             strategy_params = {i:p[i] for i in self.strategy_param_names}
