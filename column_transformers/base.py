@@ -75,55 +75,56 @@ class BaseIndicator(ABC, BaseEstimator):
     
     @abstractmethod
     def price_indicator(self, X, **kwargs):
-    """Return a price series and calculated tehnical indicator series/s.
-    
-    Parameters
-    ----------
-    X: pd.Series
-    
-    Examples
-    --------
-    
-    >>> class MacdIndicator(BaseIndicator):
-    ...
-    ...     PRICE_AXIS = 0
-    ...
-    ...     def price_indicator(self, 
-    ...                          X, 
-    ...                          fast_period, 
-    ...                          slow_period, 
-    ...                          signal_period):
-    ... 
-    ...        real = X[:, self.PRICE_AXIS]
-    ...    
-    ...        macd_statistics = talib.MACD(
-    ...                real,
-    ...                fastperiod = fast_period,
-    ...                slowperiod = slow_period,
-    ...                signalperiod = signal_period
-    ...            )   
-    ...
-    ...        return np.c_[X, np.array(macd_statistics).T]
-    ...
-    ...
-    >>> X
-    np.array([280.00, 278.00, ..., 650.50, 654.75])
+        """Return a price series and calculated tehnical indicator series/s.
 
-    The technical indicator may now be calculated from the price series X
+        Parameters
+        ----------
+        X: pd.Series
 
-    >>> ind = MacdIndicator()
-    >>> ind.price_indicator(X, 12, 26, 9)
-    
-    array([[ 2.80000000e+02,  nan,  nan,
-             nan],
-           [ 2.78000000e+02,  nan,  nan,
-             nan],
-               ...,
-           [ 6.50500000e+02, -5.91181455e+00, -5.33374644e+00,
-            -5.78068106e-01],
-           [ 6.54750000e+02, -4.86376135e+00, -5.27499831e+00,
-             4.11236956e-01]])
-    """
+        Examples
+        --------
+
+        >>> class MacdIndicator(BaseIndicator):
+        ...
+        ...     PRICE_AXIS = 0
+        ...
+        ...     def price_indicator(self, 
+        ...                          X, 
+        ...                          fast_period, 
+        ...                          slow_period, 
+        ...                          signal_period):
+        ... 
+        ...        real = X[:, self.PRICE_AXIS]
+        ...    
+        ...        macd_statistics = talib.MACD(
+        ...                real,
+        ...                fastperiod = fast_period,
+        ...                slowperiod = slow_period,
+        ...                signalperiod = signal_period
+        ...            )   
+        ...
+        ...        return np.c_[X, np.array(macd_statistics).T]
+        ...
+        ...
+        >>> X
+        np.array([280.00, 278.00, ..., 650.50, 654.75])
+
+        The technical indicator may now be calculated from the price series X
+
+        >>> ind = MacdIndicator()
+        >>> ind.price_indicator(X, 12, 26, 9)
+
+        array([[ 2.80000000e+02,  nan,  nan,
+                 nan],
+               [ 2.78000000e+02,  nan,  nan,
+                 nan],
+                   ...,
+               [ 6.50500000e+02, -5.91181455e+00, -5.33374644e+00,
+                -5.78068106e-01],
+               [ 6.54750000e+02, -4.86376135e+00, -5.27499831e+00,
+                 4.11236956e-01]])
+        """
+        
         pass
     
     
